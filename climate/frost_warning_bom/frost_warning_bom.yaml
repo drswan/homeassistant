@@ -47,4 +47,31 @@ blueprint:
         number:
           min: 0
           max: 5
-          unit_of_measurement: °
+          unit_of_measurement: °C
+          mode: slider
+
+trigger:
+  - platform: time
+    at: !input trigger_time
+
+condition:
+  - condition: numeric_state
+    entity_id: !input temperature_sensor
+    below: !input temperature_threshold
+  - condition: template
+    value_template: >
+      {% set temp = states(!input "temperature_sensor") | float %}
+      {% set dew = states(!input "dew_point_sensor") | float %}
+      {% set gap = temp - dew %}
+      {{ gap < float(!input "dew_point_gap") }}
+
+action:
+  - domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "❄️ Frost Warning"
+    message: >
+      It's likely frosty this morning! Temp: {{ states(!input "temperature_sensor") }}°C, 
+      Dew Point: {{ states(!input "dew_point_sensor") }}°C.
+
+mode: single
