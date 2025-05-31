@@ -1,0 +1,76 @@
+blueprint:
+  name: Frost Warning – BOM
+  description: >
+    Send a notification in the morning if BOM temperature is below a threshold 
+    and the dew point is close enough to indicate frost.
+  domain: automation
+  input:
+    temperature_sensor:
+      name: BOM Temperature Sensor
+      description: The BOM temperature entity (e.g., sensor.bom_temperature_canberra)
+      selector:
+        entity:
+          domain: sensor
+    dew_point_sensor:
+      name: BOM Dew Point Sensor
+      description: The BOM dew point entity (e.g., sensor.bom_dew_point_canberra)
+      selector:
+        entity:
+          domain: sensor
+    notify_device:
+      name: Notification Target
+      description: The device to notify
+      selector:
+        device:
+          integration: mobile_app
+    trigger_time:
+      name: Time to check
+      description: Time of day to trigger the frost check
+      default: "05:00:00"
+      selector:
+        time:
+    temperature_threshold:
+      name: Temperature Threshold (°C)
+      description: If temperature is below this value, check for frost risk
+      default: 2
+      selector:
+        number:
+          min: -10
+          max: 10
+          unit_of_measurement: °C
+          mode: slider
+    dew_point_gap:
+      name: Max Difference Between Temp and Dew Point (°C)
+      description: If temp - dew point is less than this, frost is likely
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 5
+          unit_of_measurement: °C
+          mode: slider
+
+trigger:
+  - platform: time
+    at: !input trigger_time
+
+condition:
+  - condition: numeric_state
+    entity_id: !input temperature_sensor
+    below: !input temperature_threshold
+  - condition: template
+    value_template: >
+      {% set temp = states(!input 'temperature_sensor') | float %}
+      {% set dew = states(!input 'dew_point_sensor') | float %}
+      {% set gap = temp - dew %}
+      {{ gap < (float(!input 'dew_point_gap')) }}
+
+action:
+  - service: notify.mobile_app_{{ device_id("notify_device") }}
+    data:
+      title: "❄️ Frost Warning"
+      message: >
+        It's likely frosty this morning! Temp: {{ states(!input 'temperature_sensor') }}°C, 
+        Dew Point: {{ states(!input 'dew_point_sensor') }}°C.
+
+mode: single
