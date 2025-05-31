@@ -1,7 +1,7 @@
 blueprint:
   name: Frost Warning – BOM
   description: >
-    Send a notification in the morning if BOM temperature is below a threshold 
+    Sends a notification in the morning if BOM temperature is below a threshold 
     and the dew point is close enough to indicate frost.
   domain: automation
   input:
@@ -54,16 +54,22 @@ trigger:
   - platform: time
     at: !input trigger_time
 
+variables:
+  temp_entity: !input temperature_sensor
+  dew_entity: !input dew_point_sensor
+  threshold: !input temperature_threshold
+  gap: !input dew_point_gap
+
 condition:
   - condition: numeric_state
     entity_id: !input temperature_sensor
     below: !input temperature_threshold
+
   - condition: template
     value_template: >
-      {% set temp = states(!input "temperature_sensor") | float %}
-      {% set dew = states(!input "dew_point_sensor") | float %}
-      {% set gap = temp - dew %}
-      {{ gap < float(!input "dew_point_gap") }}
+      {% set temp = states(temp_entity) | float %}
+      {% set dew = states(dew_entity) | float %}
+      {{ (temp - dew) < gap }}
 
 action:
   - domain: mobile_app
@@ -71,7 +77,7 @@ action:
     device_id: !input notify_device
     title: "❄️ Frost Warning"
     message: >
-      It's likely frosty this morning! Temp: {{ states(!input "temperature_sensor") }}°C, 
-      Dew Point: {{ states(!input "dew_point_sensor") }}°C.
+      Frost likely! Temp: {{ states(temp_entity) }}°C, 
+      Dew Point: {{ states(dew_entity) }}°C.
 
 mode: single
